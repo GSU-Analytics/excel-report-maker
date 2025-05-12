@@ -7,7 +7,13 @@ The `ExcelReportGenerator` class is designed to create standardized Excel report
 - `ExcelReportGenerator` does not rely on SQL in any way. You may use it as a standalone tool for turning Pandas DataFrames into Excel reports.
 
 ## Installation
-TBD
+```bash
+# OPTIONAL, but recommended: Make a new virtual environment, if you don't already have one
+conda create -n my_new_environment
+# Install the package from GitHub
+# Change the version number after the "@" symbol to get different versions
+pip install git+https://github.com/GSU-Analytics/excel-report-maker@v0.1.1
+```
 
 ## Usage
 ### Initialization
