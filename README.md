@@ -79,7 +79,7 @@ Creates the workbook with the Introduction and all results sheets and saves it.
 
 ## Example
 ```python
-from excel_report_generator import ExcelReportGenerator
+from excel_report_maker import ExcelReportGenerator
 import pandas as pd
 
 # Sample data
