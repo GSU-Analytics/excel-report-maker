@@ -1,13 +1,17 @@
+
 [project]
 name = "excel_report_maker"
-version = "0.1.1"
-description = "A utility for building standardized Excel reports with Python."
+version = "0.2.0"
+description = "A utility for building standardized Excel reports with Python. Now with image embedding support."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "openpyxl>=3.1.5",
     "pandas>=2.2.3",
 ]
+
+[project.optional-dependencies]
+charts = ["matplotlib>=3.7.0"]
 
 [build-system]
 requires = ["hatchling"]
