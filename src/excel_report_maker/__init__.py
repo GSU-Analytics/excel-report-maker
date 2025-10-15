@@ -111,7 +111,7 @@ class ExcelReportGenerator:
             # Auto-adjust column widths.
             for col in ws.columns:
                 max_length = max((len(str(cell.value)) if cell.value else 0 for cell in col), default=0)
-                adjusted_width = max_length + 2
+                adjusted_width = max_length + self.column_padding
                 ws.column_dimensions[get_column_letter(col[0].column)].width = adjusted_width
 
     def generate_workbook(self, output_path):
@@ -125,6 +125,17 @@ class ExcelReportGenerator:
         self.create_results_sheets()
         self.wb.save(output_path)
         print(f"Workbook successfully saved to {output_path}")
+
+    @property
+    def column_padding(self):
+        """Dynamically fetch column padding as a hidden property.
+        """
+        return 4 if not getattr(self, '_column_padding', None) else self._column_padding
+        
+    def set_column_padding(self, padding):
+        """Explicitly set the desired column padding.
+        """
+        self._column_padding = padding
 
 if __name__ == '__main__':
     print('Welcome to excel-report-maker!')
