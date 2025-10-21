@@ -43,11 +43,12 @@ def test_excel_workflow(dummy_data):
     # Build a second sheet ------------------------------------------------------------------------
     second_topic_sheet = ReportSheet('Second Topic')
     report.register_sheet(second_topic_sheet)
+
     # Change some settings
     second_topic_sheet.gridlines = False
     # Register a table
     rtable3 = ReportTable.from_df('Custom Table', data2)
-    rtable3.set_table_style(name='TableStyleLight3')
+    rtable3.set_table_style(name='TableStyleLight3', showFirstColumn=True)
     # Changing the text styling
     # See the openpyxl documentation for more details:
     # https://openpyxl.readthedocs.io/en/stable/styles.html
@@ -57,3 +58,17 @@ def test_excel_workflow(dummy_data):
 
     # Build the report ----------------------------------------------------------------------------
     report.generate_workbook('tests/demo_workflow.xlsx')
+
+def test_excel_dict(dummy_data):
+    dummy_dict = {
+        'sheet 1': {
+            'Special Table': dummy_data,
+            'Subset Table': dummy_data.iloc[:, 1:3]
+        },
+        'Sheet CRAZY TRAIN' :{
+            'Secret table': dummy_data.iloc[1:4, :]
+        }
+    }
+
+    report = ExcelReport.from_dict(dummy_dict)
+    report.generate_workbook('tests/demo_dict.xlsx')

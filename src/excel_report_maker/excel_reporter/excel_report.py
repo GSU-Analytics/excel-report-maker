@@ -4,11 +4,11 @@ from openpyxl import Workbook
 from openpyxl.worksheet.table import Table, TableStyleInfo
 
 from excel_report_maker.excel_reporter.excel_report_df import ExcelReportGenerator
-from excel_report_maker.excel_components.report_table import ReportSheet
+from excel_report_maker.excel_components.report_sheet import ReportSheet
+from excel_report_maker.excel_components.report_table import ReportTable
 
 from typing import Optional, TYPE_CHECKING
 if TYPE_CHECKING:
-    from excel_report_maker.excel_components.report_table import ReportTable
     import pandas as pd
 
 
@@ -36,6 +36,21 @@ class ExcelReport(ExcelReportGenerator):
     def _build_all_report_sheets(self):
         for report_sheet in self.results:
             self._build_report_sheet(report_sheet)
+
+    @staticmethod
+    def from_dict(sheet_table_dict: dict[str, dict[str, "pd.DataFrame"]], intro_text: str = 'Hello world!'):
+        results = [
+            ReportSheet.from_table_list(sheet_name, [
+                ReportTable.from_df(
+                    table_name,
+                    sheet_table_dict[sheet_name][table_name]
+                )
+                for table_name in sheet_table_dict[sheet_name]
+            ])
+            for sheet_name
+            in sheet_table_dict
+        ]
+        return ExcelReport(results=results, intro_text_str=intro_text)
 
     def register_sheet(self, report_sheet: "ReportSheet"):
         self.results.append(report_sheet)

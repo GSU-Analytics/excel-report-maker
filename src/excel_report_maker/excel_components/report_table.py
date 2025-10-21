@@ -9,7 +9,6 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 
 from typing import Optional, TYPE_CHECKING
 if TYPE_CHECKING:
-    from excel_report_maker.excel_reporter.excel_report import ExcelReport
     from excel_report_maker.excel_components.report_sheet import ReportSheet
 
 
