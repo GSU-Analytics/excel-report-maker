@@ -24,9 +24,10 @@ def test_excel_report(dummy_data):
         .generate_workbook('tests/demo_report.xlsx')
 
 def test_excel_workflow(dummy_data):
-    # Make report
+    # Make report ---------------------------------------------------------------------------------
     report = ExcelReport()
-    # Make and register a sheet
+
+    # Make and register a sheet -------------------------------------------------------------------
     first_topic_sheet = ReportSheet("First Topic")
     report.register_sheet(first_topic_sheet)
 
@@ -39,7 +40,7 @@ def test_excel_workflow(dummy_data):
     rtable2 = ReportTable.from_df('Subset', data2)
     first_topic_sheet.register_table(rtable2)
 
-    # Build a second sheet
+    # Build a second sheet ------------------------------------------------------------------------
     second_topic_sheet = ReportSheet('Second Topic')
     report.register_sheet(second_topic_sheet)
     # Change some settings
@@ -47,7 +48,12 @@ def test_excel_workflow(dummy_data):
     # Register a table
     rtable3 = ReportTable.from_df('Custom Table', data2)
     rtable3.set_table_style(name='TableStyleLight3')
+    # Changing the text styling
+    # See the openpyxl documentation for more details:
+    # https://openpyxl.readthedocs.io/en/stable/styles.html
+    from openpyxl.styles import Font
+    rtable3.set_text_style('title', 'font', Font(size=36))
     second_topic_sheet.register_table(rtable3)
 
-    # Build the report
+    # Build the report ----------------------------------------------------------------------------
     report.generate_workbook('tests/demo_workflow.xlsx')

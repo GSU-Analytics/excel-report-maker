@@ -4,11 +4,12 @@ from openpyxl import Workbook
 from openpyxl.worksheet.table import Table, TableStyleInfo
 
 from excel_report_maker.excel_reporter.excel_report_df import ExcelReportGenerator
+from excel_report_maker.excel_components.report_table import ReportSheet
 
 from typing import Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from excel_report_maker.excel_components.report_table import ReportTable
-    from excel_report_maker.excel_components.report_table import ReportSheet
+    import pandas as pd
 
 
 @dataclass

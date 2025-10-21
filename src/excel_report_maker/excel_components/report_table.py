@@ -21,13 +21,45 @@ DEFAULT_TABLE_STYLE = TableStyleInfo(
     showColumnStripes=False
 )
 
-
 @dataclass
+class ReportTableTextBlock:
+    text: str
+    styles: dict = field(default_factory=dict)
+
+    def _write_text(self, worksheet, row, column):
+        text_cell = worksheet.cell(
+            row=row,
+            column=column,
+            value=self.text
+        )
+        for style in self.styles:
+            assert style in {'font', 'fill', 'border', 'alignment'}
+            setattr(text_cell, style, self.styles[style])
+
+
 class ReportTable:
-    title: str
-    df: pd.DataFrame
-    table: Optional[Table] = None
-    table_style: TableStyleInfo = DEFAULT_TABLE_STYLE
+    def __init__(
+            self,
+            title: str | ReportTableTextBlock,
+            df: pd.DataFrame,
+            subtitle: Optional[str | ReportTableTextBlock] = None,
+            table: Optional[Table] = None,
+            table_style: TableStyleInfo = DEFAULT_TABLE_STYLE
+            ):
+        # Main instance variables
+        self.df = df
+        self.table = table
+        self.table_style = table_style
+        # Processing text. Should be cleaned up later.
+        if isinstance(title, str):
+            title = ReportTableTextBlock(title)
+        if isinstance(subtitle, str):
+            subtitle = ReportTableTextBlock(subtitle)
+        title.styles['font'] = Font(bold=True, size=18)
+        if subtitle is not None:
+            subtitle.styles['font'] = Font(italic=True, size=12, color='FF767679')
+        self.title = title
+        self.subtitle = subtitle
 
     @staticmethod
     def from_df(title, df):
@@ -55,6 +87,14 @@ class ReportTable:
         )
         return self
     
+    def set_text_style(self, text_attribute_name: str, styling_name: str, style_obj):
+        '''Example: self.set_text_style("title", "font", Font(italic=True))
+        '''
+        text_object = getattr(self, text_attribute_name, 'None')
+        if text_object:
+            assert isinstance(text_object, ReportTableTextBlock), 'Did you access a text attribute from the text block?'
+            text_object.styles[styling_name] = style_obj
+        
     def _as_excel_table(self, displayName: str, ref: str, **table_kwargs):
         table = Table(displayName=displayName, ref=ref, **table_kwargs)
         table.tableStyleInfo = self.table_style
@@ -79,15 +119,14 @@ class ReportTable:
         assert ws is not None
 
         # Write the table title with formatting.
-        title_cell = ws.cell(
-            row=start_row,
-            column=1,
-            value=self.title
-        )
-        title_cell.font = Font(bold=True, size=12)
+        self.title._write_text(ws, start_row, 1)
+        start_row += 1
+
+        if self.subtitle is not None:
+            self.subtitle._write_text(ws, start_row, 1)
+            start_row += 1
 
         # Append the DataFrame rows (header and data).
-        start_row += 1
         initial_data_row = start_row
         i = 0
         for i, row in enumerate(dataframe_to_rows(self.df, index=False, header=True), start=0):
