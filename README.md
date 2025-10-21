@@ -1,3 +1,5 @@
+# Excel Report Generator
+
 <!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-refresh-toc -->
 **Table of Contents**
 
@@ -22,8 +24,6 @@
     - [Example](#example)
 
 <!-- markdown-toc end -->
-
-# Excel Report Generator
 
 ## Quickstart
 The `ExcelReport` class is designed to create standardized Excel reports from Python. It utilizes the `openpyxl` library to generate Excel workbooks with multiple sheets, each containing formatted table versions of Pandas DataFrames.
