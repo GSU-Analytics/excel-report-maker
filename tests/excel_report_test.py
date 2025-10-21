@@ -17,7 +17,7 @@ def test_excel_report(dummy_data):
         [ReportTable.from_df(f"Dummy {x}", dummy_data) for x in range(2)]
     )
 
-    sheet_1.gridlines = False
+    sheet_1.settings.gridlines = False
     sheets = [sheet_1, sheet_2]
 
     ExcelReport(sheets, "Hello, world!")\
@@ -45,15 +45,15 @@ def test_excel_workflow(dummy_data):
     report.register_sheet(second_topic_sheet)
 
     # Change some settings
-    second_topic_sheet.gridlines = False
+    second_topic_sheet.settings.gridlines = False
     # Register a table
     rtable3 = ReportTable.from_df('Custom Table', data2)
-    rtable3.set_table_style(name='TableStyleLight3', showFirstColumn=True)
+    rtable3.settings.set_table_style(name='TableStyleLight3', showFirstColumn=True)
     # Changing the text styling
     # See the openpyxl documentation for more details:
     # https://openpyxl.readthedocs.io/en/stable/styles.html
     from openpyxl.styles import Font
-    rtable3.set_text_style('title', 'font', Font(size=36))
+    rtable3.settings.set_text_style('title', 'font', Font(size=36))
     second_topic_sheet.register_table(rtable3)
 
     # Build the report ----------------------------------------------------------------------------
@@ -70,5 +70,13 @@ def test_excel_dict(dummy_data):
         }
     }
 
+
     report = ExcelReport.from_dict(dummy_dict)
+
+    first_sheet = report.sheets[0]
+    assert first_sheet.sheet_name == 'sheet 1'
+
+    first_table = first_sheet.tables[0]
+    assert first_table.settings.title.text == 'Special Table'
+
     report.generate_workbook('tests/demo_dict.xlsx')

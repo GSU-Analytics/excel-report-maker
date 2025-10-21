@@ -1,10 +1,54 @@
+<!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-refresh-toc -->
+**Table of Contents**
+
+- [Excel Report Generator](#excel-report-generator)
+  - [Quickstart](#quickstart)
+  - [Installation](#installation)
+  - [Overview](#overview)
+    - [SQL Integration](#sql-integration)
+    - [Historical Notes for Backwards Compatibility](#historical-notes-for-backwards-compatibility)
+  - [User Guide](#user-guide)
+    - [Initialization](#initialization)
+    - [Making Changes](#making-changes)
+    - [Generating the Workbook](#generating-the-workbook)
+  - [Manual Workflow](#manual-workflow)
+  - [DEPRECATED - ExcelReportGenerator](#deprecated---excelreportgenerator)
+    - [Class Methods](#class-methods)
+      - [`__init__(self, results, intro_text)`](#__init__self-results-intro_text)
+      - [`create_introduction_sheet(self)`](#create_introduction_sheetself)
+      - [`append_df_as_table(self, ws, df, table_title, start_row)`](#append_df_as_tableself-ws-df-table_title-start_row)
+      - [`create_results_sheets(self)`](#create_results_sheetsself)
+      - [`generate_workbook(self, output_path)`](#generate_workbookself-output_path)
+    - [Example](#example)
+
+<!-- markdown-toc end -->
+
 # Excel Report Generator
 
-## Overview
-The `ExcelReportGenerator` class is designed to create standardized Excel reports from Python. It utilizes the `openpyxl` library to generate Excel workbooks with multiple sheets, each containing formatted table versions of Pandas DataFrames.
+## Quickstart
+The `ExcelReport` class is designed to create standardized Excel reports from Python. It utilizes the `openpyxl` library to generate Excel workbooks with multiple sheets, each containing formatted table versions of Pandas DataFrames.
 
-- This package was originally designed to be tightly integrated with SQL queries. If you want, you can use the `sql-report-template` repo to simply write SQL queries; `ExcelReportGenerator` will handle the report generation for you.
-- `ExcelReportGenerator` does not rely on SQL in any way. You may use it as a standalone tool for turning Pandas DataFrames into Excel reports.
+```python
+import pandas as pd
+from excel_report_maker import ExcelReport
+
+dummy_data: pd.DataFrame = pd.read_csv('tests/dummy.csv')
+
+dummy_dict: dict[str, dict[str, pd.DataFrame]] = {
+    'My first topic': {
+        'Informative Table': dummy_data,
+        'Subset Table': dummy_data.iloc[:, 1:3]
+    },
+    'Deep Dive Topic' :{
+        'Focused Table': dummy_data.iloc[1:4, :]
+    }
+}
+
+report = ExcelReport.from_dict(dummy_dict)
+
+output_path = "path/to/save/report.xlsx"
+report.generate_workbook(output_path)
+```
 
 ## Installation
 ```bash
@@ -12,53 +56,145 @@ The `ExcelReportGenerator` class is designed to create standardized Excel report
 conda create -n my_new_environment
 # Install the package from GitHub
 # Change the version number after the "@" symbol to get different versions
-pip install git+https://github.com/GSU-Analytics/excel-report-maker@v0.1.1
+pip install git+https://github.com/GSU-Analytics/excel-report-maker@v0.2.0
 ```
 
-## Usage
+## Overview
+
+### SQL Integration
+- This package was originally designed to facilitate writing SQL queries and exporting the results to Excel.
+    - This functionality still exists through SQL-Runner, present in [sql-report-template](https://github.com/GSU-Analytics/sql-report-template). `ExcelReport` will handle the report generation for you.
+- `ExcelReport` does not rely on SQL in any way. You may use it as a standalone tool for turning Pandas DataFrames into Excel reports.
+
+### Historical Notes for Backwards Compatibility
+
+- There are two classes exposed by this package: `ExcelReport` and `ExcelReportGenerator`.
+    - `ExcelReport` is the current working class. It should be used for future projects.
+    - `ExcelReportGenerator` is preserved for historical analyses which rely on it. It will not receive further development.
+
+## User Guide
+
 ### Initialization
-Create an instance of the `ExcelReportGenerator` class by providing the results dictionary and introduction text.
+Create an instance of the `ExcelReport` class by providing the results dictionary and introduction text.
 
 ```python
-from excel_report_generator import ExcelReportGenerator
+import pandas as pd
+from excel_report_maker import ExcelReport
 
-results = {
-    "Sheet1": {
-        "First Table Name": df1,
-        "Second, Different Table Name": df2
+dummy_data: pd.DataFrame = pd.read_csv('tests/dummy.csv')
+
+dummy_dict: dict[str, dict[str, pd.DataFrame]] = {
+    'My first topic': {
+        'Informative Table': dummy_data,
+        'Subset Table': dummy_data.iloc[:, 1:3]
     },
-    "Sheet2": {
-        "Another table name!": df3
+    'Deep Dive Topic' :{
+        'Focused Table': dummy_data.iloc[1:4, :]
     }
 }
 
-intro_text = [
-    "This report contains the results of an analysis I conducted.",
-    "Each sheet represents a different collection of results."
-]
+report = ExcelReport.from_dict(dummy_dict)
+```
 
-report_generator = ExcelReportGenerator(results, intro_text)
+### Making Changes
+
+You can access the sheets and individual tables in the report to change their appearance or properties.
+
+```python
+from excel_report_maker import ReportSheet, ReportTable
+
+# Sheets are stored in the report as ReportSheets
+all_sheets = report.sheets
+first_sheet = report.sheets[0]
+assert isinstance(first_sheet, ReportSheet)
+assert first_sheet.sheet_name == 'My first topic'
+
+# Tables are stored in Sheets as ReportTables
+first_table = first_sheet.tables[0]
+assert isinstance(first_table, ReportTable)
+assert first_table.title.text == 'Informative Table'
+```
+
+You can use the `ReportSheet` and `ReportTable` properties and methods to change how the tables and sheets are displayed.
+
+```python
+# Setting options for sheets are in the settings property of a ReportSheet
+first_sheet.settings
+# Setting options for tables are in the settings property of a ReportTable
+first_table.settings
+
+# Diable gridlines
+first_sheet.settings.gridlines = False
+# Change the table theme
+first_table.settings.set_table_style(name='TableStyleLight3', showFirstColumn=True)
+# Change the title
+first_table.settings.title.text = 'Some brand new title'
 ```
 
 ### Generating the Workbook
-Call the `generate_workbook` method to create the Excel workbook and save it to the specified path.
+Call the `.generate_workbook()` method to create the Excel workbook and save it to the specified path.
 
 ```python
 output_path = "path/to/save/report.xlsx"
-report_generator.generate_workbook(output_path)
+report.generate_workbook(output_path)
 ```
 
-## Class Methods
-### `__init__(self, results, intro_text)`
+## Manual Workflow
+
+If you want to manually customize each table and sheet as you work, you can use a more imperative design flow:
+
+```python
+# Make report ---------------------------------------------------------------------------------
+report = ExcelReport()
+
+# Make and register a sheet -------------------------------------------------------------------
+first_topic_sheet = ReportSheet("First Topic")
+report.register_sheet(first_topic_sheet)
+
+# Do some things to process data, then register the data with the sheet
+data1 = dummy_data
+rtable1 = ReportTable.from_df('Full Data', data1)
+first_topic_sheet.register_table(rtable1)
+# Do some more things to process data, then register the data with the sheet
+data2 = dummy_data.iloc[1:4, 1:4]
+rtable2 = ReportTable.from_df('Subset', data2)
+first_topic_sheet.register_table(rtable2)
+
+# Build a second sheet ------------------------------------------------------------------------
+second_topic_sheet = ReportSheet('Second Topic')
+report.register_sheet(second_topic_sheet)
+
+# Change some settings
+second_topic_sheet.settings.gridlines = False
+# Register a table
+rtable3 = ReportTable.from_df('Custom Table', data2)
+rtable3.settings.set_table_style(name='TableStyleLight3', showFirstColumn=True)
+# Changing the text styling
+# See the openpyxl documentation for more details:
+# https://openpyxl.readthedocs.io/en/stable/styles.html
+from openpyxl.styles import Font
+rtable3.settings.set_text_style('title', 'font', Font(size=36))
+second_topic_sheet.register_table(rtable3)
+
+# Build the report ----------------------------------------------------------------------------
+report.generate_workbook('tests/demo_workflow.xlsx')
+```
+
+## DEPRECATED - ExcelReportGenerator
+
+The notes below are for those who want to use `ExcelReportGenerator`. It is not advised to use it for new projects.
+
+### Class Methods
+#### `__init__(self, results, intro_text)`
 Initializes the Excel report generator.
 
 - `results` (dict): A dictionary where each key is a sheet name and each value is a dictionary mapping table names to DataFrames.
 - `intro_text` (list of str): A list of text lines to be added to the introduction sheet.
 
-### `create_introduction_sheet(self)`
+#### `create_introduction_sheet(self)`
 Creates the Introduction worksheet and populates it with the intro text.
 
-### `append_df_as_table(self, ws, df, table_title, start_row)`
+#### `append_df_as_table(self, ws, df, table_title, start_row)`
 Appends a Pandas DataFrame to a worksheet as a formatted table.
 
 - `ws` (Worksheet): The worksheet object.
@@ -69,15 +205,15 @@ Appends a Pandas DataFrame to a worksheet as a formatted table.
 Returns:
 - `int`: The row number after the inserted table.
 
-### `create_results_sheets(self)`
+#### `create_results_sheets(self)`
 Creates a separate worksheet for each SQL file (based on the file name) and populates it with all tables derived from that file’s queries.
 
-### `generate_workbook(self, output_path)`
+#### `generate_workbook(self, output_path)`
 Creates the workbook with the Introduction and all results sheets and saves it.
 
 - `output_path` (str): The file path where the workbook will be saved.
 
-## Example
+### Example
 ```python
 from excel_report_maker import ExcelReportGenerator
 import pandas as pd

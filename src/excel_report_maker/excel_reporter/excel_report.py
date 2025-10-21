@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class ExcelReport(ExcelReportGenerator):
-    results: list["ReportSheet"] = field(default_factory=list)
+    sheets: list["ReportSheet"] = field(default_factory=list)
     intro_text_str: Optional[str] = None
     wb: Workbook = field(default_factory=Workbook)
 
@@ -34,26 +34,28 @@ class ExcelReport(ExcelReportGenerator):
         report_sheet._create_report_sheet(self)
 
     def _build_all_report_sheets(self):
-        for report_sheet in self.results:
+        for report_sheet in self.sheets:
             self._build_report_sheet(report_sheet)
 
     @staticmethod
     def from_dict(sheet_table_dict: dict[str, dict[str, "pd.DataFrame"]], intro_text: str = 'Hello world!'):
         results = [
-            ReportSheet.from_table_list(sheet_name, [
-                ReportTable.from_df(
-                    table_name,
-                    sheet_table_dict[sheet_name][table_name]
+            ReportSheet.from_table_list(
+                sheet_name,
+                list(ReportTable.from_df(
+                        table_name,
+                        sheet_table_dict[sheet_name][table_name]
+                    )
+                    for table_name
+                    in sheet_table_dict[sheet_name])
                 )
-                for table_name in sheet_table_dict[sheet_name]
-            ])
             for sheet_name
             in sheet_table_dict
         ]
-        return ExcelReport(results=results, intro_text_str=intro_text)
+        return ExcelReport(sheets=results, intro_text_str=intro_text)
 
     def register_sheet(self, report_sheet: "ReportSheet"):
-        self.results.append(report_sheet)
+        self.sheets.append(report_sheet)
         return report_sheet
 
     def generate_workbook(self, output_path):

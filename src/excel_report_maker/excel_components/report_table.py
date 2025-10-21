@@ -36,33 +36,25 @@ class ReportTableTextBlock:
             setattr(text_cell, style, self.styles[style])
 
 
-class ReportTable:
-    def __init__(
-            self,
-            title: str | ReportTableTextBlock,
-            df: pd.DataFrame,
-            subtitle: Optional[str | ReportTableTextBlock] = None,
-            table: Optional[Table] = None,
-            table_style: TableStyleInfo = DEFAULT_TABLE_STYLE
-            ):
-        # Main instance variables
-        self.df = df
-        self.table = table
-        self.table_style = table_style
-        # Processing text. Should be cleaned up later.
-        if isinstance(title, str):
-            title = ReportTableTextBlock(title)
-        if isinstance(subtitle, str):
-            subtitle = ReportTableTextBlock(subtitle)
-        title.styles['font'] = Font(bold=True, size=18)
-        if subtitle is not None:
-            subtitle.styles['font'] = Font(italic=True, size=12, color='FF767679')
-        self.title = title
-        self.subtitle = subtitle
+@dataclass
+class ReportTableSettings:
+    title: ReportTableTextBlock
+    subtitle: Optional[ReportTableTextBlock] = None
+    table_style: TableStyleInfo = DEFAULT_TABLE_STYLE
 
-    @staticmethod
-    def from_df(title, df):
-        return ReportTable(title, df)
+    def __init__(self, title: str | ReportTableTextBlock, subtitle: Optional[str | ReportTableTextBlock], table_style: TableStyleInfo):
+        TEXT_FONTS = {
+            'title': Font(bold=True, size=18),
+            'subtitle': Font(italic=True, size=12, color='FF767679')
+        }
+        for text_elem, text_lab in zip([title, subtitle], ['title', 'subtitle']):
+            if not text_elem:
+                continue
+            if isinstance(text_elem, str):
+                text_elem = ReportTableTextBlock(text_elem)
+            text_elem.styles['font'] = TEXT_FONTS[text_lab]
+            setattr(self, text_lab, text_elem)
+        self.table_style = table_style
 
     def set_table_style(self, 
         name="TableStyleDark9",
@@ -85,18 +77,37 @@ class ReportTable:
             showColumnStripes=showColumnStripes
         )
         return self
-    
+
     def set_text_style(self, text_attribute_name: str, styling_name: str, style_obj):
         '''Example: self.set_text_style("title", "font", Font(italic=True))
         '''
-        text_object = getattr(self, text_attribute_name, 'None')
+        text_object = getattr(self, text_attribute_name, None)
         if text_object:
             assert isinstance(text_object, ReportTableTextBlock), 'Did you access a text attribute from the text block?'
             text_object.styles[styling_name] = style_obj
-        
+
+
+class ReportTable:
+    def __init__(
+            self,
+            title: str | ReportTableTextBlock,
+            df: pd.DataFrame,
+            subtitle: Optional[str | ReportTableTextBlock] = None,
+            table: Optional[Table] = None,
+            table_style: TableStyleInfo = DEFAULT_TABLE_STYLE
+            ):
+        # Main instance variables
+        self.df = df
+        self.table = table
+        self.settings = ReportTableSettings(title, subtitle, table_style)
+
+    @staticmethod
+    def from_df(title, df):
+        return ReportTable(title, df)
+    
     def _as_excel_table(self, displayName: str, ref: str, **table_kwargs):
         table = Table(displayName=displayName, ref=ref, **table_kwargs)
-        table.tableStyleInfo = self.table_style
+        table.tableStyleInfo = self.settings.table_style
         self.table = table
         return table
 
@@ -118,11 +129,11 @@ class ReportTable:
         assert ws is not None
 
         # Write the table title with formatting.
-        self.title._write_text(ws, start_row, 1)
+        self.settings.title._write_text(ws, start_row, 1)
         start_row += 1
 
-        if self.subtitle is not None:
-            self.subtitle._write_text(ws, start_row, 1)
+        if self.settings.subtitle is not None:
+            self.settings.subtitle._write_text(ws, start_row, 1)
             start_row += 1
 
         # Append the DataFrame rows (header and data).
