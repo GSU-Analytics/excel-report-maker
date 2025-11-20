@@ -13,4 +13,5 @@ wheels/
 tests/**.xlsx
 
 # VS Code settings
+# VS Code
 .vscode/
