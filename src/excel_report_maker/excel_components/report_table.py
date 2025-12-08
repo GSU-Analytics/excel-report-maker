@@ -1,0 +1,171 @@
+from dataclasses import dataclass, field
+
+import pandas as pd
+from openpyxl.worksheet.worksheet import Worksheet
+from openpyxl.worksheet.table import Table, TableStyleInfo
+from openpyxl.styles import Font
+from openpyxl.utils import get_column_letter
+from openpyxl.utils.dataframe import dataframe_to_rows
+
+from typing import Optional, TYPE_CHECKING
+if TYPE_CHECKING:
+    from excel_report_maker.excel_components.report_sheet import ReportSheet
+
+
+DEFAULT_TABLE_STYLE = TableStyleInfo(
+    name="TableStyleDark9",
+    showFirstColumn=False,
+    showLastColumn=False,
+    showRowStripes=True,
+    showColumnStripes=False
+)
+
+@dataclass
+class ReportTableTextBlock:
+    text: str
+    styles: dict = field(default_factory=dict)
+
+    def _write_text(self, worksheet, row, column):
+        text_cell = worksheet.cell(
+            row=row,
+            column=column,
+            value=self.text
+        )
+        for style in self.styles:
+            assert style in {'font', 'fill', 'border', 'alignment'}
+            setattr(text_cell, style, self.styles[style])
+
+
+@dataclass
+class ReportTableSettings:
+    title: ReportTableTextBlock
+    subtitle: Optional[ReportTableTextBlock] = None
+    table_style: TableStyleInfo = DEFAULT_TABLE_STYLE
+
+    def __init__(self, title: str | ReportTableTextBlock, subtitle: Optional[str | ReportTableTextBlock], table_style: TableStyleInfo):
+        TEXT_FONTS = {
+            'title': Font(bold=True, size=18),
+            'subtitle': Font(italic=True, size=12, color='FF767679')
+        }
+        for text_elem, text_lab in zip([title, subtitle], ['title', 'subtitle']):
+            if not text_elem:
+                continue
+            if isinstance(text_elem, str):
+                text_elem = ReportTableTextBlock(text_elem)
+            text_elem.styles['font'] = TEXT_FONTS[text_lab]
+            setattr(self, text_lab, text_elem)
+        self.table_style = table_style
+
+    def set_table_style(self, 
+        name="TableStyleDark9",
+        showFirstColumn=False,
+        showLastColumn=False,
+        showRowStripes=True,
+        showColumnStripes=False
+    ):
+        '''The name will determine the base theme and style.
+        The form should be "TableStyle<Mode><Num>" ...where Mode is
+        one of Light, Medium, or Dark, and Num is an integer from 1 to approximately 21.
+
+        To check, open Excel and mouse over the various table styles to see their names.
+        '''
+        self.table_style = TableStyleInfo(
+            name=name,
+            showFirstColumn=showFirstColumn,
+            showLastColumn=showLastColumn,
+            showRowStripes=showRowStripes,
+            showColumnStripes=showColumnStripes
+        )
+        return self
+
+    def set_text_style(self, text_attribute_name: str, styling_name: str, style_obj):
+        '''Example: self.set_text_style("title", "font", Font(italic=True))
+        '''
+        text_object = getattr(self, text_attribute_name, None)
+        if text_object:
+            assert isinstance(text_object, ReportTableTextBlock), 'Did you access a text attribute from the text block?'
+            text_object.styles[styling_name] = style_obj
+
+
+class ReportTable:
+    def __init__(
+            self,
+            title: str | ReportTableTextBlock,
+            df: pd.DataFrame,
+            subtitle: Optional[str | ReportTableTextBlock] = None,
+            table: Optional[Table] = None,
+            table_style: TableStyleInfo = DEFAULT_TABLE_STYLE
+            ):
+        # Main instance variables
+        self.df = df
+        self.table = table
+        self.settings = ReportTableSettings(title, subtitle, table_style)
+
+    @staticmethod
+    def from_df(title, df):
+        return ReportTable(title, df)
+    
+    def _as_excel_table(self, displayName: str, ref: str, **table_kwargs):
+        table = Table(displayName=displayName, ref=ref, **table_kwargs)
+        table.tableStyleInfo = self.settings.table_style
+        self.table = table
+        return table
+
+    def _append_table_to_sheet(self, report_sheet: "ReportSheet", global_table_counter: int, start_row: int):
+        """
+        Appends a Pandas DataFrame to a worksheet as a formatted table.
+
+        Args:
+            ws (Worksheet): The worksheet object.
+            df (DataFrame): The Pandas DataFrame to add.
+            table_title (str): Title to display above the table.
+            start_row (int): The starting row number in the worksheet.
+
+        Returns:
+            int: The row number after the inserted table.
+        """
+        # Get the Excel worksheet object
+        ws: Optional[Worksheet] = report_sheet.ws
+        assert ws is not None
+
+        # Write the table title with formatting.
+        self.settings.title._write_text(ws, start_row, 1)
+        start_row += 1
+
+        if self.settings.subtitle is not None:
+            self.settings.subtitle._write_text(ws, start_row, 1)
+            start_row += 1
+
+        # Append the DataFrame rows (header and data).
+        initial_data_row = start_row
+        i = 0
+        for i, row in enumerate(dataframe_to_rows(self.df, index=False, header=True), start=0):
+            ws.append(row)
+        rows_appended = i + 1
+        end_row = start_row + rows_appended - 1
+        start_col = 1
+        end_col = self.df.shape[1]
+
+        # Create an Excel table with a unique name.
+        table_ref = f"{get_column_letter(start_col)}{initial_data_row}:{get_column_letter(end_col)}{end_row}"
+        excel_table = self._as_excel_table(displayName=f"Table{global_table_counter}", ref=table_ref)
+        
+        # Add the table
+        ws.add_table(excel_table)
+
+        # Format any column whose name contains "Rate" as a percentage.
+        self._format_rates(
+            ws,
+            initial_data_row + 1,
+            end_row + 1
+        )
+
+        # Return the next available row (with a couple of blank rows added).
+        return end_row + 2
+
+    def _format_rates(self, ws: Worksheet, data_top_row, data_bottom_row):
+        rate_cols = [col for col in self.df.columns if "rate" in col.lower()]
+        for col_idx, col_name in enumerate(self.df.columns, start=1):
+            if col_name in rate_cols:
+                for row_idx in range(data_top_row, data_bottom_row):
+                    ws.cell(row=row_idx, column=col_idx).number_format = '0%'
