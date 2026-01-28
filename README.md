@@ -14,6 +14,11 @@
     - [Making Changes](#making-changes)
     - [Generating the Workbook](#generating-the-workbook)
   - [Manual Workflow](#manual-workflow)
+  - [Image Embedding](#image-embedding)
+    - [Installation for Image Support](#installation-for-image-support)
+    - [Adding Matplotlib Figures](#adding-matplotlib-figures)
+    - [Adding PNG Files](#adding-png-files)
+    - [Combining Tables and Images](#combining-tables-and-images)
   - [DEPRECATED - ExcelReportGenerator](#deprecated---excelreportgenerator)
     - [Class Methods](#class-methods)
       - [`__init__(self, results, intro_text)`](#__init__self-results-intro_text)
@@ -179,6 +184,83 @@ second_topic_sheet.register_table(rtable3)
 # Build the report ----------------------------------------------------------------------------
 report.generate_workbook('tests/demo_workflow.xlsx')
 ```
+
+## Image Embedding
+
+Add matplotlib figures and PNG images to your Excel reports alongside tables.
+
+### Installation for Image Support
+
+To use image embedding features, install the optional matplotlib dependency:
+
+```bash
+pip install git+https://github.com/GSU-Analytics/excel-report-maker@v0.2.0[images]
+```
+
+### Adding Matplotlib Figures
+
+Embed matplotlib figures directly into your reports:
+
+```python
+import matplotlib.pyplot as plt
+from excel_report_maker import ExcelReport, ReportSheet, ReportTable, ReportImage
+
+fig, ax = plt.subplots(figsize=(8, 5))
+ax.plot([1, 2, 3, 4], [10, 20, 15, 25], marker='o')
+ax.set_title('Sales Trend')
+ax.set_xlabel('Quarter')
+ax.set_ylabel('Revenue')
+
+sheet = ReportSheet("Sales Analysis")
+sheet.register_image(ReportImage.from_figure(fig, title='Quarterly Revenue', width=600, height=400))
+
+report = ExcelReport([sheet])
+report.generate_workbook('report_with_chart.xlsx')
+```
+
+### Adding PNG Files
+
+Embed PNG images from files:
+
+```python
+from excel_report_maker import ReportImage
+
+sheet = ReportSheet("Company Overview")
+sheet.register_image(ReportImage.from_file('logo.png', title='Company Logo', width=300, height=200))
+
+report = ExcelReport([sheet])
+report.generate_workbook('report_with_logo.xlsx')
+```
+
+### Combining Tables and Images
+
+Combine tables and images in a single sheet:
+
+```python
+import pandas as pd
+import matplotlib.pyplot as plt
+from excel_report_maker import ExcelReport, ReportSheet, ReportTable, ReportImage
+
+data = pd.DataFrame({
+    'Quarter': ['Q1', 'Q2', 'Q3', 'Q4'],
+    'Revenue': [100, 150, 120, 180],
+    'Growth_Rate': [0.10, 0.15, 0.12, 0.18]
+})
+
+fig, ax = plt.subplots(figsize=(8, 5))
+ax.bar(data['Quarter'], data['Revenue'])
+ax.set_title('Quarterly Revenue')
+
+sheet = ReportSheet("Financial Report")
+sheet.register_table(ReportTable.from_df('Sales Data', data))
+sheet.register_image(ReportImage.from_figure(fig, title='Revenue Chart', width=600, height=400))
+sheet.register_image(ReportImage.from_file('company_logo.png', width=250, height=150))
+
+report = ExcelReport([sheet])
+report.generate_workbook('financial_report.xlsx')
+```
+
+Images are rendered after tables in the order they are registered. You can customize image dimensions using the `width` and `height` parameters. The `title` parameter is optional.
 
 ## DEPRECATED - ExcelReportGenerator
 

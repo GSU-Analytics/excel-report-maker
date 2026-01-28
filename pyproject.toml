@@ -10,6 +10,11 @@ dependencies = [
     "pytest>=8.4.2",
 ]
 
+[project.optional-dependencies]
+images = [
+    "matplotlib>=3.7.0",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
